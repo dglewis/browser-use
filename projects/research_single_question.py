@@ -63,20 +63,22 @@ class SaviyntQuestionValidator:
         You are validating Saviynt documentation. Follow this EXACT process:
 
         IMPORTANT: You must ONLY use the Saviynt documentation website.
-        NEVER use Google or any other search engine.
+        - YOU MUST use the latest version of the documentation
+        - DO NOT use Google or any other search engine.
 
         1. ANALYZE QUESTION AND CONTEXT:
+        - Question ID: {question['id']}
         - Question: "{question['question']}"
         - Type: {question['type']} (radio=single answer, checkbox=multiple answers)
         - Current Answer(s): {json.dumps(question['answer'])}
         - Extract key technical terms and features
-        - Identify the documentation section context (e.g., Configuration, Administration, Features)
+        - Options: {json.dumps(question['options'])}
 
         2. DOCUMENTATION SEARCH STRATEGY:
         - Start at: {question.get('reference', {}).get('url') or "https://docs.saviyntcloud.com"}
         - Use search bar with extracted key terms
         - Use left navigation menu for context
-        - Stay within current version documentation
+        - YOU MUST use the latest version of the documentation
         - DO NOT use external search engines like Google
 
         3. VALIDATE EACH OPTION:
@@ -90,11 +92,17 @@ class SaviyntQuestionValidator:
         - Consider configuration requirements and limitations
 
         4. CRAFT DETAILED EXPLANATION:
-        - Explain WHY correct answers are correct
+        - Explain WHY correct answers are correct and incorrect answers are incorrect
+        - FOCUS on WHY the answer is correct or incorrect, not WHAT the answer is.
         - For incorrect options, explain why they're wrong
         - Include configuration context if relevant
         - Reference specific documentation sections
         - For scenario questions, explain the reasoning for each option
+        - Provide a detailed, well-written explanation with a clear and concise answer, providing context where helpful for learning.
+        - For scenario-based questions, also provid detailed reasoning for each option.
+        - Included why secondary options (like delegation and manual selection) are less critical but still worth checking.
+        - Ensure the reference URL points to a specific relevant section of the documentation.
+        - DO NOT state that the answer is because the documentation says so, such as, "The documentation indicates that..." or "...as mentioned in the documentation..." since it is obvious that the documentation is the source of the answer.
 
         5. VERIFY AND UPDATE REFERENCE:
         - Ensure URL points to specific relevant section
@@ -102,17 +110,26 @@ class SaviyntQuestionValidator:
         - Verify URL is accessible and current version
 
         6. RETURN AND FORMAT:
-        - Format the newly verified question as the original question, but with the new explanation and reference.
-        - Return results in JSON format matching the original question schema:
+        IMPORTANT:
+        - Return a properly formatted JSON object
+        - Use proper grammar and capitalization in all text
+        - Ensure options are returned as a proper array/list, not a string
+
+        Format the response exactly like this:
         {{
-            "question": "original question text with proper grammar and punctuation",
-            "options": "original options text with proper grammar and punctuation",
-            "answer": "correct answer(s) text with proper grammar and punctuation",
-            "type": "original question type",
-            "explanation": "detailed explanation following guidelines",
+            "id": {question['id']},
+            "question": "Question text with proper capitalization",
+            "options": [
+                "Option 1",
+                "Option 2",
+                "Option 3"
+            ],
+            "answer": "Correct answer with proper capitalization",
+            "type": "{question['type']}",
+            "explanation": "Detailed explanation with proper grammar and capitalization",
             "reference": {{
-                "document": "exact document title",
-                "url": "specific documentation URL"
+                "document": "Exact document title",
+                "url": "Specific documentation URL"
             }}
         }}
         """
@@ -130,41 +147,28 @@ class SaviyntQuestionValidator:
         self.logger.debug(f"Agent result: {result}")
 
         try:
-            # Parse the agent's response which is in markdown format
-            lines = result.split('\n')
+            # Parse the JSON response
+            response_data = json.loads(result)
 
-            # Extract the relevant parts
-            explanation = ""
-            reference = {}
+            # Validate required fields
+            required_fields = ['id', 'question', 'options', 'answer', 'type', 'explanation', 'reference']
+            if not all(field in response_data for field in required_fields):
+                raise ValueError("Missing required fields in response")
 
-            in_explanation = False
-            for line in lines:
-                if line.startswith('**Explanation**:'):
-                    in_explanation = True
-                    continue
-                elif line.startswith('**Reference**:'):
-                    in_explanation = False
-                    continue
-                elif in_explanation and line.strip():
-                    explanation += line.strip() + "\n"
-                elif line.strip().startswith('- **Document**:'):
-                    reference['document'] = line.split(':')[1].strip()
-                elif line.strip().startswith('- **URL**:'):
-                    # Extract URL from markdown link format [title](url)
-                    url_match = re.search(r'\((.*?)\)', line)
-                    if url_match:
-                        reference['url'] = url_match.group(1)
+            # Ensure options is a list
+            if not isinstance(response_data['options'], list):
+                raise ValueError("Options must be a list")
 
-            # Update only the explanation and reference
-            validated_question.update({
-                'explanation': explanation.strip(),
-                'reference': reference
-            })
+            # Update the validated question with the response data
+            validated_question.update(response_data)
 
-            self.logger.info("Successfully updated explanation and reference")
+            self.logger.info("Successfully updated question with validation results")
 
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Failed to parse JSON response: {e}")
+            self.logger.debug(f"Invalid JSON response: {result}")
         except Exception as e:
-            self.logger.error(f"Failed to parse agent response: {e}")
+            self.logger.error(f"Error processing validation response: {e}")
             self.logger.debug(f"Problematic response: {result}")
 
         if self.shutdown:
