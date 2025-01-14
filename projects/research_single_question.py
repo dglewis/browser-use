@@ -9,6 +9,7 @@ from typing import Dict
 from browser_use import Agent
 from browser_use.browser.browser import Browser, BrowserConfig, BrowserContextConfig
 from config.llm_config import LLMFactory
+import re
 
 class SaviyntQuestionValidator:
     def __init__(self, model_name: str = 'gpt-4o', **model_kwargs):
@@ -63,7 +64,7 @@ class SaviyntQuestionValidator:
 
         IMPORTANT: You must ONLY use the Saviynt documentation website.
         NEVER use Google or any other search engine.
-        
+
         1. ANALYZE QUESTION AND CONTEXT:
         - Question: "{question['question']}"
         - Type: {question['type']} (radio=single answer, checkbox=multiple answers)
@@ -129,15 +130,40 @@ class SaviyntQuestionValidator:
         self.logger.debug(f"Agent result: {result}")
 
         try:
-            agent_response = json.loads(result)
-            # Only update explanation and reference while preserving everything else
+            # Parse the agent's response which is in markdown format
+            lines = result.split('\n')
+
+            # Extract the relevant parts
+            explanation = ""
+            reference = {}
+
+            in_explanation = False
+            for line in lines:
+                if line.startswith('**Explanation**:'):
+                    in_explanation = True
+                    continue
+                elif line.startswith('**Reference**:'):
+                    in_explanation = False
+                    continue
+                elif in_explanation and line.strip():
+                    explanation += line.strip() + "\n"
+                elif line.strip().startswith('- **Document**:'):
+                    reference['document'] = line.split(':')[1].strip()
+                elif line.strip().startswith('- **URL**:'):
+                    # Extract URL from markdown link format [title](url)
+                    url_match = re.search(r'\((.*?)\)', line)
+                    if url_match:
+                        reference['url'] = url_match.group(1)
+
+            # Update only the explanation and reference
             validated_question.update({
-                'explanation': agent_response['explanation'],
-                'reference': agent_response['reference']
+                'explanation': explanation.strip(),
+                'reference': reference
             })
+
             self.logger.info("Successfully updated explanation and reference")
 
-        except json.JSONDecodeError as e:
+        except Exception as e:
             self.logger.error(f"Failed to parse agent response: {e}")
             self.logger.debug(f"Problematic response: {result}")
 
