@@ -147,15 +147,26 @@ class SaviyntQuestionValidator:
         self.logger.debug(f"Agent result: {result}")
 
         try:
-            # Parse the JSON response
-            response_data = json.loads(result)
+            # Extract the JSON string from AgentHistoryList
+            json_str = result.final_result()  # Get the final result string
 
-            # Validate required fields
+            # Parse the JSON response
+            response_data = json.loads(json_str)
+
+            # Ensure options is a list
+            if isinstance(response_data.get('options'), str):
+                # If options is a string, try to parse it as JSON
+                try:
+                    response_data['options'] = json.loads(response_data['options'])
+                except json.JSONDecodeError:
+                    self.logger.error("Failed to parse options string as JSON")
+                    return validated_question
+
+            # Validate required fields and types
             required_fields = ['id', 'question', 'options', 'answer', 'type', 'explanation', 'reference']
             if not all(field in response_data for field in required_fields):
                 raise ValueError("Missing required fields in response")
 
-            # Ensure options is a list
             if not isinstance(response_data['options'], list):
                 raise ValueError("Options must be a list")
 
@@ -164,9 +175,9 @@ class SaviyntQuestionValidator:
 
             self.logger.info("Successfully updated question with validation results")
 
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to parse JSON response: {e}")
-            self.logger.debug(f"Invalid JSON response: {result}")
+        except (json.JSONDecodeError, AttributeError) as e:
+            self.logger.error(f"Failed to parse response: {e}")
+            self.logger.debug(f"Problematic response: {result}")
         except Exception as e:
             self.logger.error(f"Error processing validation response: {e}")
             self.logger.debug(f"Problematic response: {result}")
