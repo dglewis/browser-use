@@ -15,7 +15,7 @@ class SaviyntQuestionValidator:
     def __init__(self, model_name: str = 'gpt-4o', **model_kwargs):
         self.browser = Browser(
             config=BrowserConfig(
-                headless=False,
+                headless=args.headless,
                 disable_security=True,
                 new_context_config=BrowserContextConfig(
                     disable_security=True,
@@ -279,6 +279,11 @@ if __name__ == "__main__":
         type=float,
         default=0.7,
         help='Temperature for LLM sampling (0.0-1.0)'
+    )
+    parser.add_argument(
+        '--headless',
+        action='store_true',
+        help='Run browser in headless mode'
     )
     args = parser.parse_args()
 
