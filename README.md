@@ -26,7 +26,7 @@ With pip:
 pip install browser-use
 ```
 
-(optional) install playwright:
+install playwright:
 
 ```bash
 playwright install
@@ -38,6 +38,8 @@ Spin up your agent:
 from langchain_openai import ChatOpenAI
 from browser_use import Agent
 import asyncio
+from dotenv import load_dotenv
+load_dotenv()
 
 async def main():
     agent = Agent(
@@ -69,18 +71,18 @@ uv pip install gradio
 ```
 
 ```bash
-python examples/gradio.py
+python examples/gradio_demo.py
 ```
 
 # Demos
 
-[Prompt](https://github.com/browser-use/browser-use/blob/main/examples/real_browser.py): Write a letter in Google Docs to my Papa, thanking him for everything, and save the document as a PDF.
+[Prompt](https://github.com/browser-use/browser-use/blob/main/examples/browser/real_browser.py): Write a letter in Google Docs to my Papa, thanking him for everything, and save the document as a PDF.
 
 ![Letter to Papa](https://github.com/user-attachments/assets/242ade3e-15bc-41c2-988f-cbc5415a66aa)
 
 <br/><br/>
 
-[Prompt](https://github.com/browser-use/browser-use/blob/main/examples/find_and_apply_to_jobs.py): Read my CV & find ML jobs, save them to a file, and then start applying for them in new tabs, if you need help, ask me.'
+[Prompt](https://github.com/browser-use/browser-use/blob/main/examples/use-cases/find_and_apply_to_jobs.py): Read my CV & find ML jobs, save them to a file, and then start applying for them in new tabs, if you need help, ask me.'
 
 https://github.com/user-attachments/assets/171fb4d6-0355-46f2-863e-edb04a828d04
 
@@ -92,7 +94,7 @@ Prompt: Find flights on kayak.com from Zurich to Beijing from 25.12.2024 to 02.0
 
 <br/><br/>
 
-[Prompt](https://github.com/browser-use/browser-use/blob/main/examples/save_to_file_hugging_face.py): Look up models with a license of cc-by-sa-4.0 and sort by most likes on Hugging face, save top 5 to file.
+[Prompt](https://github.com/browser-use/browser-use/blob/main/examples/custom-functions/save_to_file_hugging_face.py): Look up models with a license of cc-by-sa-4.0 and sort by most likes on Hugging face, save top 5 to file.
 
 https://github.com/user-attachments/assets/de73ee39-432c-4b97-b4e8-939fd7f323b3
 
@@ -102,18 +104,64 @@ For more examples see the [examples](examples) folder or join the [Discord](http
 
 # Vision
 
-We’re creating a future where you tell your computer what to do, and it gets it done.
+Tell your computer what to do, and it gets it done.
 
-# Contributing
+## Roadmap
 
-Contributions are welcome! Feel free to open issues for bugs or feature requests.
+- [ ] Improve memory management
+- [ ] Enhance planning capabilities
+- [ ] Improve self-correction
+- [ ] Fine-tune the model for better performance
+- [ ] Create datasets for complex tasks
+- [ ] Sandbox browser-use for specific websites
+- [ ] Implement deterministic script rerun with LLM fallback
+- [ ] Cloud-hosted version
+- [ ] Add stop/pause functionality
+- [ ] Improve authentication handling
+- [ ] Reduce token consumption
+- [ ] Implement long-term memory
+- [ ] Handle repetitive tasks reliably
+- [ ] Third-party integrations (Slack, etc.)
+- [ ] Include more interactive elements
+- [ ] Human-in-the-loop execution
+- [ ] Benchmark various models against each other
+- [ ] Let the user record a workflow and browser-use will execute it
+- [ ] Improve the generated GIF quality
+- [ ] Create various demos for tutorial execution, job application, QA testing, social media, etc.
+
+## Contributing
+
+We love contributions! Feel free to open issues for bugs or feature requests. To contribute to the docs, check out the `/docs` folder.
 
 ## Local Setup
 
 To learn more about the library, check out the [local setup 📕](https://docs.browser-use.com/development/local-setup).
+
+## Cooperations
+
+We are forming a commission to define best practices for UI/UX design for browser agents.
+Together, we're exploring how software redesign improves the performance of AI agents and gives these companies a competitive advantage by designing their existing software to be at the forefront of the agent age.
+
+Email [Toby](mailto:tbiddle@loop11.com?subject=I%20want%20to%20join%20the%20UI/UX%20commission%20for%20AI%20agents&body=Hi%20Toby%2C%0A%0AI%20found%20you%20in%20the%20browser-use%20GitHub%20README.%0A%0A) to apply for a seat on the committee.
+
+## Citation
+
+If you use Browser Use in your research or project, please cite:
+
+```bibtex
+@software{browser_use2024,
+  author = {Müller, Magnus and Žunič, Gregor},
+  title = {Browser Use: Enable AI to control your browser},
+  year = {2024},
+  publisher = {GitHub},
+  url = {https://github.com/browser-use/browser-use}
+}
+```
 
 ---
 
 <div align="center">
   Made with ❤️ in Zurich and San Francisco
 </div>
+
+
