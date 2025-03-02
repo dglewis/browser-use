@@ -185,48 +185,60 @@ class SaviyntQuestionValidator:
             browser=self.browser,
             max_actions_per_step=4,
             tool_call_in_content=True,
-            system_prompt_class=DeepseekSystemPrompt if self.model_name == 'deepseek-chat' else None,
+            system_prompt_class=DeepseekSystemPrompt if self.model_name == 'deepseek-chat' else SystemPrompt,
         )
 
         self.logger.info("Running agent for validation")
-        result = await agent.run()
-        self.logger.debug(f"Agent result: {result}")
-
         try:
+            result = await agent.run()
+            self.logger.debug(f"Agent result: {result}")
+
+            if result is None:
+                self.logger.error("Agent returned None result")
+                return validated_question  # Return original question without changes
+
             # Extract the JSON string from AgentHistoryList
-            json_str = result.final_result()  # Get the final result string
-
-            # Parse the JSON response
-            response_data = json.loads(json_str)
-
-            # Ensure options is a list
-            if isinstance(response_data.get('options'), str):
-                # If options is a string, try to parse it as JSON
-                try:
-                    response_data['options'] = json.loads(response_data['options'])
-                except json.JSONDecodeError:
-                    self.logger.error("Failed to parse options string as JSON")
+            try:
+                json_str = result.final_result()  # Get the final result string
+                if not json_str:
+                    self.logger.error("Agent returned empty final result")
                     return validated_question
+                
+                # Parse the JSON response
+                response_data = json.loads(json_str)
 
-            # Validate required fields and types
-            required_fields = ['id', 'question', 'options', 'answer', 'type', 'explanation', 'reference']
-            if not all(field in response_data for field in required_fields):
-                raise ValueError("Missing required fields in response")
+                # Ensure options is a list
+                if isinstance(response_data.get('options'), str):
+                    # If options is a string, try to parse it as JSON
+                    try:
+                        response_data['options'] = json.loads(response_data['options'])
+                    except json.JSONDecodeError:
+                        self.logger.error("Failed to parse options string as JSON")
+                        return validated_question
 
-            if not isinstance(response_data['options'], list):
-                raise ValueError("Options must be a list")
+                # Validate required fields and types
+                required_fields = ['id', 'question', 'options', 'answer', 'type', 'explanation', 'reference']
+                if not all(field in response_data for field in required_fields):
+                    raise ValueError("Missing required fields in response")
 
-            # Update the validated question with the response data
-            validated_question.update(response_data)
+                if not isinstance(response_data['options'], list):
+                    raise ValueError("Options must be a list")
 
-            self.logger.info("Successfully updated question with validation results")
+                # Update the validated question with the response data
+                validated_question.update(response_data)
 
-        except (json.JSONDecodeError, AttributeError) as e:
-            self.logger.error(f"Failed to parse response: {e}")
-            self.logger.debug(f"Problematic response: {result}")
+                self.logger.info("Successfully updated question with validation results")
+
+            except (json.JSONDecodeError, AttributeError) as e:
+                self.logger.error(f"Failed to parse response: {e}")
+                self.logger.debug(f"Problematic response: {result}")
+            except Exception as e:
+                self.logger.error(f"Error processing validation response: {e}")
+                self.logger.debug(f"Problematic response: {result}")
+
         except Exception as e:
-            self.logger.error(f"Error processing validation response: {e}")
-            self.logger.debug(f"Problematic response: {result}")
+            self.logger.error(f"Error running agent: {e}")
+            self.logger.debug(f"Problematic agent result: {result}")
 
         if self.shutdown:
             self.logger.info("Gracefully stopping validation...")
@@ -270,25 +282,39 @@ async def validate_question_by_id(
             loop.add_signal_handler(sig, signal_handler)
 
         # Load the source questions file
-        questions_file = Path('sav-iga-l200b.json')
+        questions_file = Path('projects/sav-iga-l200b.json')
         logger.info(f"Loading questions from {questions_file}")
 
         try:
             with open(questions_file) as f:
-                exam_data = json.load(f)
+                try:
+                    exam_data = json.load(f)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Invalid JSON in questions file: {e}")
+                    return
+        except FileNotFoundError:
+            logger.error(f"Questions file not found: {questions_file}")
+            return
         except Exception as e:
             logger.error(f"Failed to load questions file: {e}")
             return
 
         # Find the question with matching ID
-        question = next((q for q in exam_data['questions'] if q['id'] == question_id), None)
+        question = next((q for q in exam_data.get('questions', []) if q.get('id') == question_id), None)
 
         if not question:
             logger.error(f"Question with ID {question_id} not found")
             return
 
         logger.info(f"Starting validation for question {question_id}")
-        validated = await validator.validate_question(question)
+        try:
+            validated = await validator.validate_question(question)
+            if validated is None:
+                logger.error("Validation returned None result")
+                return
+        except Exception as e:
+            logger.error(f"Error during question validation: {e}")
+            return
 
         # Save output maintaining original schema
         output_data = {
@@ -339,7 +365,11 @@ async def validate_question_by_id(
         logger.error(f"Error: {e}")
     finally:
         if validator:
-            await validator.cleanup()
+            try:
+                await validator.cleanup()
+                logger.info("Cleanup complete")
+            except Exception as e:
+                logger.error(f"Error during cleanup: {e}")
         logger.info("Validation process completed")
 
 if __name__ == "__main__":
