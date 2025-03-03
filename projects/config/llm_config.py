@@ -44,6 +44,10 @@ class LLMFactory:
             model_id='anthropic/claude-3.5-sonnet:beta',
             description="Claude 3.5 Sonnet (self-moderated)"
         ),
+        'claude-3.7-sonnet': ModelConfig(
+            model_id='anthropic/claude-3.7-sonnet:beta',
+            description="Claude 3.7 Sonnet (latest version)"
+        ),
     }
 
     @classmethod
@@ -79,7 +83,7 @@ class LLMFactory:
         return ChatOpenAI(
             model=config.model_id,
             base_url=config.base_url,
-            max_tokens=config.context_length,
+            model_kwargs={"max_tokens": config.context_length},
             temperature=temperature,  # Use potentially overridden temperature
             **kwargs  # Pass remaining kwargs to ChatOpenAI
         )
