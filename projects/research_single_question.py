@@ -53,10 +53,11 @@ class SaviyntQuestionValidator:
     async def get_latest_version(self) -> str:
         """Check docs homepage to determine latest version"""
         try:
-            page = await self.browser.new_page()
-            await page.goto("https://docs.saviyntcloud.com")
-            # Logic to find latest version from available options
-            return "latest"  # This would actually return the found version
+            async with await self.browser.new_context() as context:
+                page = await context.get_current_page()
+                await page.goto("https://docs.saviyntcloud.com")
+                # Logic to find latest version from available options
+                return "latest"  # This would actually return the found version
         except Exception as e:
             self.logger.error(f"Failed to determine latest version: {e}")
             return "current"
